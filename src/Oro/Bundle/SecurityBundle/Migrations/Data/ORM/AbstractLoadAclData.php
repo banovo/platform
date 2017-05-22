@@ -91,6 +91,9 @@ abstract class AbstractLoadAclData extends AbstractFixture implements
         $permission,
         array $acls
     ) {
+        if (!$this->entityBundleExists(str_replace('entity|', '', $permission))) {
+            return;
+        }
         $oid = $aclManager->getOid(str_replace('|', ':', $permission));
 
         $extension = $aclManager->getExtensionSelector()->select($oid);
@@ -101,7 +104,7 @@ abstract class AbstractLoadAclData extends AbstractFixture implements
 
             if (!empty($acls)) {
                 foreach ($acls as $acl) {
-                    if ($maskBuilder->hasMask('MASK_' . $acl)) {
+                    if ($maskBuilder->hasMask('MASK_'.$acl)) {
                         $mask = $maskBuilder->add($acl)->get();
                     }
                 }
@@ -196,5 +199,32 @@ abstract class AbstractLoadAclData extends AbstractFixture implements
             ->setParameter('role', User::ROLE_ANONYMOUS)
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Checks whether the entity bundle is active or not
+     *
+     * @param string $entityClassName
+     *
+     * @return bool
+     */
+    private function entityBundleExists($entityClassName)
+    {
+        // Prepare bundles namespaces
+        $bundles = $this->container->getParameter('kernel.bundles');
+        $bundleNamespaces = [];
+        foreach ($bundles as $bundle) {
+            $bundleNamespaces[] = (new \ReflectionClass($bundle))->getNamespaceName();
+        }
+
+        // Prepare entity namespace
+        $entityBundleName = substr($entityClassName, 0, strpos($entityClassName, '\\Entity\\'));
+        foreach ($bundleNamespaces as $bundle) {
+            if ($entityBundleName === $bundle) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
